@@ -28,20 +28,19 @@ netlify link --name pak-bank-discounts-ai   # if not linked
 netlify deploy --prod
 ```
 
-## Backend (Render)
+## Backend (Render) – Deployed
 
-1. Go to [dashboard.render.com](https://dashboard.render.com) → New → Blueprint
-2. Connect your GitHub repo (`pak-bank-discounts-ai`)
-3. Render will detect `render.yaml` and create:
-   - PostgreSQL database: `pakbank-db`
-   - Web service: `pak-bank-backend`
+Blueprint `pak-bank-discounts` is deployed at [Render](https://dashboard.render.com/blueprint/exs-d66d873h46gs739pgb1g/resources).
 
-4. In the backend service → Environment, add:
-   - `SERP_API_KEY` (from your backend/.env)
-   - `GROQ_API_KEY` (from your backend/.env)
+**Required: add env vars to `pak-bank-backend` service**
 
-5. `DATABASE_URL` is auto-injected from the linked Postgres
-6. After deploy, your API URL will be like: `https://pak-bank-backend.onrender.com`
+1. Open [Blueprint Resources](https://dashboard.render.com/blueprint/exs-d66d873h46gs739pgb1g/resources)
+2. Click `pak-bank-backend` (or find it under the main dashboard)
+3. Go to **Environment** and add:
+   - `SERP_API_KEY` (from your `backend/.env`)
+   - `GROQ_API_KEY` (from your `backend/.env`)
+4. Save and redeploy. `DATABASE_URL` is already provided by the blueprint.
+5. API URL: `https://pak-bank-backend.onrender.com`
 
 ## Link Frontend to Backend
 
