@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-surface text-ink antialiased;
+  background-image:
+    radial-gradient(circle at top, rgba(124, 58, 237, 0.25), transparent 45%),
+    radial-gradient(circle at 20% 30%, rgba(34, 211, 238, 0.2), transparent 40%),
+    radial-gradient(circle at 80% 20%, rgba(16, 185, 129, 0.15), transparent 40%);
+  background-attachment: fixed;
+}
+
+select option {
+  color: #0b1020;
+  background-color: #f8fafc;
+}

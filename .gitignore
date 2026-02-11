@@ -1,0 +1,45 @@
+# Env and secrets
+.env
+.env.local
+.env.*.local
+backend/.env
+frontend/.env.local
+
+# Netlify local state
+frontend/.netlify/
+
+# Dependencies
+node_modules/
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Build
+.next/
+dist/
+build/
+*.egg-info/
+
+# Data and indices
+backend/data/
+*.index
+faiss_metadata.json
+
+# IDE and OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Docker
+.docker/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Local tools (reinstall as needed)
+tools/node/
+tools/netlify-cli/node_modules/
