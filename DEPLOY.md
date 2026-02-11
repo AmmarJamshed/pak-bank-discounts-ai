@@ -2,23 +2,26 @@
 
 ## Frontend (Netlify)
 
-### Option A: Deploy via GitHub (Recommended – avoids CLI Blobs error)
+### Link to GitHub (site `pak-bank-discounts-ai` exists, manual deploys)
 
-1. Create a GitHub repo and push:
-   ```powershell
-   git remote add origin https://github.com/YOUR_USERNAME/pak-bank-discounts-ai.git
-   git push -u origin master
-   ```
+1. **Grant Netlify access to the repo** (required if repo doesn’t appear in the list):
+   - Open [GitHub App settings](https://github.com/settings/installations)
+   - Find **Netlify** → Configure
+   - Under “Repository access”, add `AmmarJamshed/pak-bank-discounts-ai`
+   - Save
 
-2. Go to [app.netlify.com](https://app.netlify.com) → Add new site → Import from Git
-3. Connect your GitHub and select `pak-bank-discounts-ai`
-4. Build settings:
-   - Base directory: `frontend`
-   - Build command: `npm run build`
-   - Publish directory: `frontend/.next`
+2. **Link repository**:
+   - [Netlify project](https://app.netlify.com/projects/pak-bank-discounts-ai) → **Build & deploy** → **Link repository**
+   - Choose **GitHub** and select `AmmarJamshed/pak-bank-discounts-ai`
+   - Build settings (from `netlify.toml`):
+     - Base directory: `frontend`
+     - Build command: `npm run build`
+     - Publish directory: `.next` (handled by `@netlify/plugin-nextjs`)
 
-5. After backend is deployed, add env var:
-   - `NEXT_PUBLIC_API_BASE_URL` = your backend URL (e.g. `https://pak-bank-backend.onrender.com`)
+3. **Environment variable** (already set):
+   - `NEXT_PUBLIC_API_BASE_URL` = `https://pak-bank-backend.onrender.com`
+
+4. First deploy runs automatically after linking. For later deploys, push to `main` to trigger builds.
 
 ### Option B: Deploy via CLI (may hit Blobs error)
 

@@ -1,7 +1,7 @@
 [build]
 base = "frontend"
 command = "npm run build"
-publish = ".next"
+publish = "out"
 
-[[plugins]]
-package = "@netlify/plugin-nextjs"
+[build.environment]
+NETLIFY_NEXT_PLUGIN_SKIP = "true"
