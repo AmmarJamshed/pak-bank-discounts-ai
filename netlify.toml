@@ -5,16 +5,3 @@ publish = "out"
 
 [build.environment]
 NETLIFY_NEXT_PLUGIN_SKIP = "true"
-
-# Workaround: with base=frontend, static files deploy under /out/
-[[redirects]]
-from = "/"
-to = "/out/"
-status = 200
-force = true
-
-[[redirects]]
-from = "/*"
-to = "/out/:splat"
-status = 200
-force = true
