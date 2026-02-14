@@ -39,3 +39,30 @@ export function setCachedDeals(discounts: unknown[], banks: string[]): void {
 export function isCacheStale(cached: CachedDeals): boolean {
   return Date.now() - cached.fetchedAt > CACHE_MAX_AGE_MS;
 }
+
+/** Get filtered deals from cache for instant load on city/category/bank pages. */
+export function getCachedDealsFiltered(
+  filter: { city?: string; category?: string; bank?: string }
+): unknown[] | null {
+  const cached = getCachedDeals();
+  if (!cached?.discounts?.length) return null;
+  const deals = cached.discounts as Array<{
+    city?: string;
+    category?: string;
+    bank?: string;
+  }>;
+  let filtered = deals;
+  if (filter.city) {
+    const c = filter.city.toLowerCase();
+    filtered = filtered.filter((d) => (d.city ?? "").toLowerCase() === c);
+  }
+  if (filter.category) {
+    const cat = filter.category.toLowerCase();
+    filtered = filtered.filter((d) => (d.category ?? "").toLowerCase() === cat);
+  }
+  if (filter.bank) {
+    const b = filter.bank.toLowerCase();
+    filtered = filtered.filter((d) => (d.bank ?? "").toLowerCase() === b);
+  }
+  return filtered.length ? filtered : null;
+}

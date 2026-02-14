@@ -1,3 +1,4 @@
+import Link from "next/link";
 import "../styles/globals.css";
 import MaintenanceBanner from "../components/MaintenanceBanner";
 
@@ -17,25 +18,25 @@ export default function RootLayout({
         <MaintenanceBanner />
         <header className="sticky top-0 z-50 border-b border-border/60 bg-surface/70 backdrop-blur">
           <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
-            <a href="/" className="flex items-center gap-2 text-lg font-semibold text-ink">
+            <Link href="/" className="flex items-center gap-2 text-lg font-semibold text-ink">
               <span className="grid h-8 w-8 place-items-center rounded-full bg-primary text-white shadow-[0_0_16px_rgba(124,58,237,0.6)]">
                 PB
               </span>
               Pak Bank Discounts
-            </a>
+            </Link>
             <nav className="hidden items-center gap-6 text-sm font-medium text-muted md:flex">
-              <a className="transition hover:text-accent" href="/ai-assistant">
+              <Link href="/ai-assistant" className="transition hover:text-accent" prefetch>
                 AI Assistant
-              </a>
-              <a className="transition hover:text-accent" href="/city/karachi">
+              </Link>
+              <Link href="/city/karachi" className="transition hover:text-accent" prefetch>
                 Cities
-              </a>
-              <a className="transition hover:text-accent" href="/category/food">
+              </Link>
+              <Link href="/category/food" className="transition hover:text-accent" prefetch>
                 Categories
-              </a>
-              <a className="transition hover:text-accent" href="/admin">
+              </Link>
+              <Link href="/admin" className="transition hover:text-accent" prefetch>
                 Admin
-              </a>
+              </Link>
             </nav>
           </div>
         </header>

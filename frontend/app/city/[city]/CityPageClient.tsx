@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import DealCard from "../../../components/DealCard";
+import { getCachedDealsFiltered } from "../../../lib/cache";
 import { type Discount, fetchDiscounts } from "../../../lib/api";
 
 export default function CityPageClient({ city }: { city: string }) {
@@ -10,10 +11,17 @@ export default function CityPageClient({ city }: { city: string }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const load = async () => {
+    const cached = getCachedDealsFiltered({ city });
+    if (cached?.length) {
+      setDiscounts(cached as Discount[]);
+      setLoading(false);
+    } else {
       setLoading(true);
+    }
+    const load = async () => {
       const data = await fetchDiscounts({ city });
-      setDiscounts(data.results || []);
+      const results = (data.results || []) as Discount[];
+      setDiscounts(results);
       setLoading(false);
     };
     load();
