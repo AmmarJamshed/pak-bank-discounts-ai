@@ -1,0 +1,48 @@
+# Deploy backend to Render using your existing Neon database
+# 1. Go to https://dashboard.render.com → New → Web Service
+# 2. Connect repo: AmmarJamshed/pak-bank-discounts-ai
+# 3. Set:
+#    - Name: pak-bank-backend
+#    - Region: Oregon
+#    - Branch: main
+#    - Root Directory: (leave empty)
+#    - Runtime: Docker
+#    - Dockerfile Path: backend/Dockerfile
+#    - Docker Build Context: backend
+# 4. Add Environment Variables (from your .env):
+#    - DATABASE_URL = postgresql+asyncpg://neondb_owner:npg_cP9qE5XafIvW@ep-lingering-credit-ai6ydlsd-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require
+#    - SERP_API_KEY = (your key)
+#    - GROQ_API_KEY = (your key)
+#    - FAISS_INDEX_PATH = /tmp/faiss.index
+#    - FAISS_METADATA_PATH = /tmp/faiss_meta.json
+#    - SKIP_BOOTSTRAP = true
+#    - DISABLE_SCHEDULER = true
+# 5. Deploy. Then run scraper via: curl -X POST https://YOUR-SERVICE.onrender.com/admin/trigger-scrape (if we add that) 
+#    Or wait for first request - cold start will init DB. Deals need scraper run.
+#
+# After deploy, set NEXT_PUBLIC_API_BASE_URL in Netlify to your Render URL and redeploy frontend.
+
+services:
+  - type: web
+    name: pak-bank-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    region: oregon
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: SERP_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: FAISS_INDEX_PATH
+        value: /tmp/faiss.index
+      - key: FAISS_METADATA_PATH
+        value: /tmp/faiss_meta.json
+      - key: SKIP_BOOTSTRAP
+        value: "false"
+      - key: DISABLE_SCHEDULER
+        value: "true"

@@ -1,6 +1,6 @@
 from datetime import date, timedelta
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -8,6 +8,33 @@ from app.db.models import Bank, Card, Discount, Merchant
 from app.db.session import get_session
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+@router.post("/trigger-scrape")
+async def trigger_scrape(background_tasks: BackgroundTasks):
+    """Trigger scraper in background. Use from cron (cron-job.org etc) or manually."""
+
+    def _run():
+        import asyncio
+        from app.db.session import AsyncSessionLocal
+        from app.services.rag import RAGService
+        from app.services.scraper import run_full_scrape
+        from app.tasks.scheduler import expire_old_discounts
+
+        async def _scrape():
+            async with AsyncSessionLocal() as session:
+                inserted = await run_full_scrape(session)
+                await expire_old_discounts(session)
+                try:
+                    await RAGService().rebuild_index(session)
+                except Exception:
+                    pass
+                return inserted
+
+        return asyncio.run(_scrape())
+
+    background_tasks.add_task(_run)
+    return {"status": "started", "message": "Scraper running in background"}
 
 
 @router.get("/analytics")
