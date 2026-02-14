@@ -140,11 +140,13 @@ export default function HomePage() {
                       "No deals loaded. The backend may be starting or the scraper hasn't run yet."}
                   </p>
                   <p className="text-xs">
-                    If this persists, ensure your PythonAnywhere web app is running and you've run
-                    the scraper: <code className="rounded bg-surface/50 px-1">python scripts/run_scrape.py</code>.
-                    Check{" "}
+                    If this persists, the backend may be cold-starting (30–60s). Trigger the scraper:{" "}
+                    <code className="rounded bg-surface/50 px-1">
+                      curl -X POST {(process.env.NEXT_PUBLIC_API_BASE_URL || "YOUR_BACKEND_URL").replace(/\/$/, "")}/admin/trigger-scrape
+                    </code>
+                    . Check{" "}
                     <a
-                      href="https://ammarjamshed123.pythonanywhere.com/health"
+                      href={`${(process.env.NEXT_PUBLIC_API_BASE_URL || "https://pak-bank-backend-637y.onrender.com").replace(/\/$/, "")}/health`}
                       target="_blank"
                       rel="noreferrer"
                       className="text-accent underline"
