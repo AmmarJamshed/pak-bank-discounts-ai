@@ -1,17 +1,9 @@
-# Render Blueprint - deploy backend + Postgres
-# 1. Push this repo to GitHub and connect to Render
-# 2. In Render Dashboard, add env vars to pak-bank-backend: SERP_API_KEY, GROQ_API_KEY
-# 3. DATABASE_URL is auto-injected when you link the Postgres DB
-#    If asyncpg needs postgresql+asyncpg://, set DATABASE_URL manually from the Postgres Internal URL
-
-databases:
-  - name: pakbank-db
-    plan: free
-    databaseName: pakbank
+# Render Blueprint - backend with Neon PostgreSQL
+# Add in Render Dashboard: DATABASE_URL, SERP_API_KEY, GROQ_API_KEY
 
 services:
-  - name: pak-bank-backend
-    type: web
+  - type: web
+    name: pak-bank-backend
     runtime: docker
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
@@ -20,16 +12,16 @@ services:
     healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
-        fromDatabase:
-          name: pakbank-db
-          property: connectionString
+        sync: false
+      - key: SERP_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
       - key: FAISS_INDEX_PATH
         value: /tmp/faiss.index
       - key: FAISS_METADATA_PATH
-        value: /tmp/faiss_metadata.json
-      - key: SCRAPE_INTERVAL_HOURS
-        value: "12"
-      - key: LOG_LEVEL
-        value: INFO
-      # Add these in Render Dashboard (Environment):
-      # SERP_API_KEY, GROQ_API_KEY
+        value: /tmp/faiss_meta.json
+      - key: SKIP_BOOTSTRAP
+        value: "false"
+      - key: DISABLE_SCHEDULER
+        value: "true"
