@@ -38,16 +38,14 @@ Click **Create Web Service**. Wait 5–10 min for build + deploy.
 
 Once live, run scraper:
 ```bash
-curl -X POST https://YOUR-SERVICE-NAME.onrender.com/admin/trigger-scrape
+curl -X POST https://pak-bank-backend-637y.onrender.com/admin/trigger-scrape
 ```
-Replace `YOUR-SERVICE-NAME` with your actual Render URL.
 
-## 5. Update Frontend
+## 5. Frontend (Netlify)
 
-In **Netlify** → Site settings → Environment variables:
-- Add `NEXT_PUBLIC_API_BASE_URL` = `https://YOUR-SERVICE-NAME.onrender.com`
-- Trigger new deploy
+`netlify.toml` already sets `NEXT_PUBLIC_API_BASE_URL = "https://pak-bank-backend-637y.onrender.com"`.
+Push to GitHub and Netlify will auto-redeploy, or trigger a manual deploy.
 
 ---
 
-**Render URL example:** `https://pak-bank-backend-xxxx.onrender.com`
+**Live backend:** https://pak-bank-backend-637y.onrender.com

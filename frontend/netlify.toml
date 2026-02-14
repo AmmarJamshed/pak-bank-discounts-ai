@@ -3,4 +3,4 @@
   publish = "out"
 
 [build.environment]
-  NEXT_PUBLIC_API_BASE_URL = "https://ammarjamshed123.pythonanywhere.com"
+  NEXT_PUBLIC_API_BASE_URL = "https://pak-bank-backend-637y.onrender.com"
