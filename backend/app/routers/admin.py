@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Bank, Card, Discount, Merchant
 from app.db.session import get_session
-from app.services.scrape_state import is_maintenance, set_scraping
+from app.services.scrape_state import get_last_scrape_result, is_maintenance, set_scraping
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -16,6 +16,16 @@ async def maintenance_status():
     """Returns maintenance flag for weekly scrape window (used by frontend banner)."""
     ok, msg = is_maintenance()
     return {"maintenance": ok, "message": msg}
+
+
+@router.get("/scrape-status")
+async def scrape_status():
+    """Returns last scrape result (inserted count, completed time)."""
+    inserted, completed_at = get_last_scrape_result()
+    return {
+        "last_inserted": inserted,
+        "last_completed_at": completed_at.isoformat() if completed_at else None,
+    }
 
 
 @router.post("/trigger-scrape")
@@ -30,20 +40,21 @@ async def trigger_scrape(background_tasks: BackgroundTasks):
         from app.tasks.scheduler import expire_old_discounts
 
         set_scraping(True)
+        inserted = -1
         try:
             async def _scrape():
                 async with AsyncSessionLocal() as session:
-                    inserted = await run_full_scrape(session)
+                    n = await run_full_scrape(session)
                     await expire_old_discounts(session)
                     try:
                         await RAGService().rebuild_index(session)
                     except Exception:
                         pass
-                    return inserted
+                    return n
 
-            asyncio.run(_scrape())
+            inserted = asyncio.run(_scrape())
         finally:
-            set_scraping(False)
+            set_scraping(False, inserted)
 
     background_tasks.add_task(_run)
     return {"status": "started", "message": "Scraper running in background"}

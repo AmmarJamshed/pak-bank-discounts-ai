@@ -485,10 +485,12 @@ async def _scrape_peekaboo(source: BankSource) -> list[ScrapedDeal]:
         "version": str(config.get("VERSION", "1.0.0")),
         "Content-Type": "application/json",
     }
-    limit = max(int(config.get("LIMIT", 12)), PEEKABOO_PAGE_LIMIT)
+    config_limit = int(config.get("LIMIT", 0)) or 12
+    limit = min(max(config_limit, PEEKABOO_PAGE_LIMIT), 100)
     country = str(config.get("BASE_COUNTRY", "Pakistan"))
 
     deals: list[ScrapedDeal] = []
+    seen_keys: set[tuple[str, str, float]] = set()
     async with httpx.AsyncClient(timeout=60, follow_redirects=True) as client:
         for city in KNOWN_CITIES:
             offset = 0
@@ -525,6 +527,10 @@ async def _scrape_peekaboo(source: BankSource) -> list[ScrapedDeal]:
                     conditions = clean_text(f"{discount_flag} {max_discount}% off")[:300]
                     card_type, tier = _parse_card_type(meta_text)
                     card_label = f"{source.name} {tier} {card_type} Card".replace(" Card Card", " Card")
+                    deal_key = (merchant_name, card_label.strip(), max_discount)
+                    if deal_key in seen_keys:
+                        continue
+                    seen_keys.add(deal_key)
                     deals.append(
                         ScrapedDeal(
                             merchant_name=merchant_name,
