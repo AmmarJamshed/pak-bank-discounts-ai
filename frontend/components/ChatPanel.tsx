@@ -124,6 +124,7 @@ export default function ChatPanel() {
         <input
           value={input}
           onChange={(event) => setInput(event.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && sendMessage()}
           placeholder="Ask: Best food discounts in DHA Karachi"
           className="flex-1 rounded-md border border-border/60 bg-white/5 px-3 py-2 text-sm text-ink shadow-sm backdrop-blur placeholder:text-muted/80 focus:border-primary focus:outline-none"
         />

@@ -3,29 +3,18 @@
 import { useEffect, useState } from "react";
 
 import DealCard from "../../../components/DealCard";
-import { fetchDiscounts } from "../../../lib/api";
-
-type Discount = {
-  discount_id: number;
-  merchant: string;
-  city: string;
-  category: string;
-  merchant_image_url?: string | null;
-  discount_percent: number;
-  bank: string;
-  card_name: string;
-  card_type: string;
-  valid_to?: string | null;
-  conditions?: string | null;
-};
+import { type Discount, fetchDiscounts } from "../../../lib/api";
 
 export default function CityPageClient({ city }: { city: string }) {
   const [discounts, setDiscounts] = useState<Discount[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const load = async () => {
+      setLoading(true);
       const data = await fetchDiscounts({ city });
       setDiscounts(data.results || []);
+      setLoading(false);
     };
     load();
   }, [city]);
@@ -39,10 +28,15 @@ export default function CityPageClient({ city }: { city: string }) {
         </p>
       </div>
       <div className="grid gap-4 md:grid-cols-2">
-        {discounts.map((deal) => (
+        {loading && (
+          <div className="col-span-full rounded-xl border border-dashed border-border/60 bg-white/5 p-6 text-sm text-muted backdrop-blur">
+            Loading deals…
+          </div>
+        )}
+        {!loading && discounts.map((deal) => (
           <DealCard key={deal.discount_id} {...deal} />
         ))}
-        {!discounts.length && (
+        {!loading && !discounts.length && (
           <div className="rounded-lg border border-border/60 bg-white/5 p-6 text-sm text-muted backdrop-blur">
             No discounts found for this city yet.
           </div>

@@ -5,21 +5,7 @@ import { useEffect, useState } from "react";
 import DealCard from "../components/DealCard";
 import Filters from "../components/Filters";
 import SearchBar from "../components/SearchBar";
-import { fetchBanks, fetchDiscounts } from "../lib/api";
-
-type Discount = {
-  discount_id: number;
-  merchant: string;
-  city: string;
-  category: string;
-  merchant_image_url?: string | null;
-  discount_percent: number;
-  bank: string;
-  card_name: string;
-  card_type: string;
-  valid_to?: string | null;
-  conditions?: string | null;
-};
+import { type Discount, fetchBanks, fetchDiscounts } from "../lib/api";
 
 export default function HomePage() {
   const [discounts, setDiscounts] = useState<Discount[]>([]);
@@ -31,7 +17,15 @@ export default function HomePage() {
   const [banks, setBanks] = useState<string[]>([]);
   const [query, setQuery] = useState("");
 
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+
+  const [backendError, setBackendError] = useState<string | null>(null);
+
   const loadDiscounts = async () => {
+    setLoading(true);
+    setLoadError(false);
+    setBackendError(null);
     const data = await fetchDiscounts({
       city,
       category,
@@ -40,7 +34,15 @@ export default function HomePage() {
       bank,
       intent: query
     });
-    setDiscounts(data.results || []);
+    const results = data.results || [];
+    setDiscounts(results);
+    setLoading(false);
+    if (data.error) {
+      setBackendError(data.error);
+    }
+    if (results.length === 0 && !city && !category && !cardType && !cardTier && !bank && !query) {
+      setLoadError(true);
+    }
   };
 
   useEffect(() => {
@@ -116,10 +118,55 @@ export default function HomePage() {
           {discounts.map((deal) => (
             <DealCard key={deal.discount_id} {...deal} />
           ))}
-          {!discounts.length && (
+          {loading && (
+            <>
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="h-64 animate-pulse rounded-2xl border border-border/60 bg-white/5"
+                />
+              ))}
+              <div className="col-span-full rounded-xl border border-dashed border-border/60 bg-white/5 p-4 text-center text-sm text-muted backdrop-blur">
+                Loading deals… (first load may take 30–60s)
+              </div>
+            </>
+          )}
+          {!loading && !discounts.length && (
             <div className="rounded-xl border border-dashed border-border/60 bg-white/5 p-6 text-sm text-muted backdrop-blur">
-              No discounts found yet. Trigger a scrape from the backend or adjust
-              filters.
+              {(loadError || backendError) ? (
+                <div className="space-y-3">
+                  <p>
+                    {backendError ||
+                      "No deals loaded. The backend may be starting or the scraper hasn't run yet."}
+                  </p>
+                  <p className="text-xs">
+                    If this persists, ensure your PythonAnywhere web app is running and you've run
+                    the scraper: <code className="rounded bg-surface/50 px-1">python scripts/run_scrape.py</code>.
+                    Check{" "}
+                    <a
+                      href="https://ammarjamshed123.pythonanywhere.com/health"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-accent underline"
+                    >
+                      backend health
+                    </a>
+                    .
+                  </p>
+                  <button
+                    type="button"
+                    onClick={loadDiscounts}
+                    className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110"
+                  >
+                    Retry loading deals
+                  </button>
+                </div>
+              ) : (
+                <p>
+                  No discounts found yet. Trigger a scrape from the backend or
+                  adjust filters.
+                </p>
+              )}
             </div>
           )}
         </div>

@@ -1,23 +1,54 @@
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
-async function safeFetchJson(url: string) {
+export type Discount = {
+  discount_id: number;
+  merchant: string;
+  city: string;
+  category: string;
+  merchant_image_url?: string | null;
+  discount_percent: number;
+  bank: string;
+  card_name: string;
+  card_type: string;
+  valid_to?: string | null;
+  conditions?: string | null;
+};
+
+export type FetchResult<T> =
+  | { results: T[]; error?: never }
+  | { results: T[]; error: string };
+
+async function fetchWithTimeout(url: string, timeoutMs = 60000) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 10000);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetch(url, {
       cache: "no-store",
       signal: controller.signal
     });
-    if (!response.ok) {
-      throw new Error(`Request failed: ${response.status}`);
-    }
+    if (!response.ok) throw new Error(`Request failed: ${response.status}`);
     return await response.json();
-  } catch (error) {
-    console.error("API request failed:", url, error);
-    return { results: [] };
   } finally {
     clearTimeout(timeout);
+  }
+}
+
+async function safeFetchJson<T = unknown>(
+  url: string
+): Promise<FetchResult<T>> {
+  try {
+    const data = await fetchWithTimeout(url);
+    return { results: (data.results ?? []) as T[] };
+  } catch (error) {
+    const msg =
+      error instanceof Error
+        ? error.name === "AbortError"
+          ? "Request timed out — backend may be starting (try again in 30s)"
+          : error.message
+        : "Connection failed";
+    console.error("API request failed:", url, error);
+    return { results: [], error: msg };
   }
 }
 
@@ -31,21 +62,33 @@ export async function fetchDiscounts(params: Record<string, string>) {
       url.searchParams.set(key, value);
     }
   });
-  return safeFetchJson(url.toString());
+  return safeFetchJson<Discount>(url.toString());
 }
 
 export async function fetchBanks() {
-  return safeFetchJson(`${API_BASE}/banks`);
+  return safeFetchJson<{ name: string }>(`${API_BASE}/banks`);
 }
 
 export async function fetchAdminAnalytics() {
-  return safeFetchJson(`${API_BASE}/admin/analytics`);
+  try {
+    return await fetchWithTimeout(`${API_BASE}/admin/analytics`);
+  } catch {
+    return null;
+  }
 }
 
 export async function fetchAdminInsights() {
-  return safeFetchJson(`${API_BASE}/admin/insights`);
+  try {
+    return await fetchWithTimeout(`${API_BASE}/admin/insights`);
+  } catch {
+    return null;
+  }
 }
 
 export async function fetchAdminTrends() {
-  return safeFetchJson(`${API_BASE}/admin/trends`);
+  try {
+    return await fetchWithTimeout(`${API_BASE}/admin/trends`);
+  } catch {
+    return null;
+  }
 }

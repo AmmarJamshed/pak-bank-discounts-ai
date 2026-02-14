@@ -1,0 +1,61 @@
+# PythonAnywhere Complete Setup — Copy & Paste
+
+## Step 1: Create Web App (choose ONE method)
+
+### Method A: CLI (recommended — needs API token)
+
+1. Get API token: PythonAnywhere → Account → API Token → Create token
+2. In Bash console, run:
+
+cd ~/pak-bank-discounts-ai/backend
+source venv/bin/activate
+pip install --upgrade pythonanywhere a2wsgi
+export PYTHONANYWHERE_API_TOKEN=YOUR_TOKEN_HERE
+pa website create --domain ammarjamshed123.pythonanywhere.com --command '/home/ammarjamshed123/pak-bank-discounts-ai/backend/venv/bin/uvicorn --app-dir /home/ammarjamshed123/pak-bank-discounts-ai/backend --uds ${DOMAIN_SOCKET} app.main:app'
+
+(Replace YOUR_TOKEN_HERE with your actual token)
+
+### Method B: Manual configuration (if CLI fails)
+
+1. Web tab → Add a new web app
+2. Choose Manual configuration → Python 3.10
+3. Set:
+   - Source code: /home/ammarjamshed123/pak-bank-discounts-ai/backend
+   - Working directory: /home/ammarjamshed123/pak-bank-discounts-ai/backend
+   - WSGI configuration file: /home/ammarjamshed123/pak-bank-discounts-ai/backend/wsgi.py
+4. Reload the web app
+
+---
+
+## Step 2: Install a2wsgi (only for Method B)
+
+cd ~/pak-bank-discounts-ai/backend
+source venv/bin/activate
+pip install a2wsgi
+
+---
+
+## Step 3: Run Scraper (load deals)
+
+cd ~/pak-bank-discounts-ai/backend
+source venv/bin/activate
+python scripts/run_scrape.py
+
+Wait 2–5 minutes. You should see: "Scrape done: inserted X, expired Y"
+
+---
+
+## Step 4: Optional — Cron (daily scrape)
+
+Consoles → $ pythonanywhere → Scheduled tasks
+
+Add:
+09 6 * * * cd /home/ammarjamshed123/pak-bank-discounts-ai/backend && /home/ammarjamshed123/pak-bank-discounts-ai/backend/venv/bin/python scripts/run_scrape.py >> /home/ammarjamshed123/scraper.log 2>&1
+
+---
+
+## Verify
+
+- Health: https://ammarjamshed123.pythonanywhere.com/health
+- Deals: https://ammarjamshed123.pythonanywhere.com/discounts?limit=10
+- Frontend: https://pak-bank-discounts-ai.netlify.app
