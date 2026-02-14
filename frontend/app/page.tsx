@@ -56,7 +56,7 @@ export default function HomePage() {
     const results = (data.results || []) as Discount[];
     if (!data.error) {
       setDiscounts(results);
-      if (results.length > 0 && noFilters) {
+      if (noFilters) {
         setCachedDeals(results, banks.length ? banks : (cached?.banks ?? []));
       }
     }

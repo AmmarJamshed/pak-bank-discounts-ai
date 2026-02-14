@@ -11,7 +11,7 @@ import httpx
 from bs4 import BeautifulSoup
 from dateutil import parser as date_parser
 from PyPDF2 import PdfReader
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.groq_client import GroqClient
@@ -163,6 +163,26 @@ SOURCES = [
         name="Habib Metro",
         website="https://www.habibmetro.com/discounts/",
         base_url="habibmetro.com",
+    ),
+    BankSource(
+        name="MCB Bank",
+        website="https://www.mcb.com.pk/personal/cards/deal-discounts",
+        base_url="mcb.com.pk",
+    ),
+    BankSource(
+        name="Allied Bank",
+        website="https://www.abl.com/latest-offers",
+        base_url="abl.com",
+    ),
+    BankSource(
+        name="Askari Bank",
+        website="https://www.askaribank.com/personal/consumer-products/master-card-2/discount-deal/",
+        base_url="askaribank.com",
+    ),
+    BankSource(
+        name="Faysal Bank",
+        website="https://digimall.faysalbank.com/discounted-deals",
+        base_url="faysalbank.com",
     ),
 ]
 
@@ -614,7 +634,15 @@ async def scrape_source(source: BankSource) -> list[ScrapedDeal]:
     return deals
 
 
-async def upsert_deals(session: AsyncSession, source: BankSource, deals: Iterable[ScrapedDeal]) -> int:
+def _deal_key(deal: ScrapedDeal) -> tuple[str, str]:
+    return (deal.merchant_name, deal.card_name)
+
+
+async def sync_deals(
+    session: AsyncSession, source: BankSource, deals: list[ScrapedDeal]
+) -> tuple[int, int, int]:
+    """Sync deals: NEW (insert), EXPIRED (remove), UPDATED (replace changed).
+    Returns (inserted, expired, updated)."""
     bank = (
         await session.execute(select(Bank).where(Bank.name == source.name))
     ).scalar_one_or_none()
@@ -623,11 +651,29 @@ async def upsert_deals(session: AsyncSession, source: BankSource, deals: Iterabl
         session.add(bank)
         await session.flush()
 
-    inserted = 0
-    for deal in deals:
-        if _looks_garbled(deal.merchant_name):
-            continue
+    deals = [d for d in deals if not _looks_garbled(d.merchant_name)]
+    scraped_keys = {_deal_key(d) for d in deals}
 
+    # 1. EXPIRED: remove discounts for this bank where (merchant, card) not in scraped set
+    existing_for_bank = (
+        await session.execute(
+            select(Discount, Merchant.name, Card.name)
+            .join(Merchant, Discount.merchant_id == Merchant.id)
+            .join(Card, Discount.card_id == Card.id)
+            .where(Card.bank_id == bank.id)
+        )
+    ).all()
+    expired = 0
+    for row in existing_for_bank:
+        d, mname, cname = row
+        if (mname, cname) not in scraped_keys:
+            await session.execute(delete(Discount).where(Discount.id == d.id))
+            expired += 1
+
+    # 2. NEW + UPDATED: for each scraped deal, insert or replace
+    inserted = 0
+    updated = 0
+    for deal in deals:
         merchant = (
             await session.execute(
                 select(Merchant).where(Merchant.name == deal.merchant_name)
@@ -668,15 +714,28 @@ async def upsert_deals(session: AsyncSession, source: BankSource, deals: Iterabl
                 select(Discount).where(
                     Discount.merchant_id == merchant.id,
                     Discount.card_id == card.id,
-                    Discount.discount_percent == deal.discount_percent,
-                    Discount.valid_from == deal.valid_from,
-                    Discount.valid_to == deal.valid_to,
                 )
             )
-        ).scalar_one_or_none()
-        if existing:
+        ).scalars().all()
+
+        exact_match = any(
+            (
+                e.discount_percent == deal.discount_percent
+                and e.conditions == deal.conditions
+                and e.valid_from == deal.valid_from
+                and e.valid_to == deal.valid_to
+            )
+            for e in existing
+        )
+        if exact_match:
             continue
 
+        # UPDATED: delete old rows for this merchant+card (percent/conditions changed)
+        for e in existing:
+            await session.execute(delete(Discount).where(Discount.id == e.id))
+            updated += 1
+
+        # INSERT (new or replacement)
         discount = Discount(
             merchant_id=merchant.id,
             card_id=card.id,
@@ -689,16 +748,42 @@ async def upsert_deals(session: AsyncSession, source: BankSource, deals: Iterabl
         inserted += 1
 
     await session.commit()
-    return inserted
+    return inserted, expired, updated
+
+
+async def _scrape_and_sync_bank(
+    session: AsyncSession, source: BankSource
+) -> tuple[int, int, int]:
+    """Scrape one bank and sync (new + expired + updated)."""
+    deals = await scrape_source(source)
+    if not deals:
+        return 0, 0, 0
+    return await sync_deals(session, source, deals)
 
 
 async def run_full_scrape(session: AsyncSession) -> int:
+    """Scrape all banks. Each bank runs NEW+EXPIRED+UPDATED sync.
+    Banks run sequentially to avoid DB contention."""
     total_inserted = 0
+    total_expired = 0
+    total_updated = 0
     for source in SOURCES:
-        deals = await scrape_source(source)
-        if not deals:
-            continue
-        inserted = await upsert_deals(session, source, deals)
+        inserted, expired, updated = await _scrape_and_sync_bank(session, source)
         total_inserted += inserted
-    logger.info("Inserted %s new discounts", total_inserted)
+        total_expired += expired
+        total_updated += updated
+        if inserted or expired or updated:
+            logger.info(
+                "%s: +%d new, -%d expired, ~%d updated",
+                source.name,
+                inserted,
+                expired,
+                updated,
+            )
+    logger.info(
+        "Scrape done: +%d new, -%d expired, ~%d updated",
+        total_inserted,
+        total_expired,
+        total_updated,
+    )
     return total_inserted
