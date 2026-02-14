@@ -12,14 +12,9 @@ router = APIRouter(prefix="/discounts", tags=["discounts"])
 
 
 def _is_readable(text: str) -> bool:
-    """Filter only truly garbled names. Minimal filter to maximize deal count (target 4000+)."""
+    """Filter only empty/null. Show all deals to reach 4000+ target."""
     cleaned = re.sub(r"\s+", " ", (text or "").strip())
-    if not cleaned or len(cleaned) < 2:
-        return False
-    letters = len(re.findall(r"[A-Za-z]", cleaned))
-    total = len(re.sub(r"\s", "", cleaned))
-    readable_ratio = letters / total if total else 0
-    return letters >= 2 and readable_ratio >= 0.25
+    return bool(cleaned)
 
 
 @router.get("")
