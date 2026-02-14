@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import DealCard from "../components/DealCard";
 import Filters from "../components/Filters";
@@ -73,9 +73,27 @@ export default function HomePage() {
     }
   }, []);
 
+  // Refetch when filters change
   useEffect(() => {
     loadDiscounts();
   }, [city, category, cardType, cardTier, bank]);
+
+  // Debounced search: when user stops typing, auto-search; clear triggers refetch
+  const isInitialMount = useRef(true);
+  const loadDiscountsRef = useRef(loadDiscounts);
+  loadDiscountsRef.current = loadDiscounts;
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      if (!query.trim()) return; // Filters effect handles initial load
+    }
+    if (!query.trim()) {
+      loadDiscountsRef.current();
+      return;
+    }
+    const timer = setTimeout(() => loadDiscountsRef.current(), 400);
+    return () => clearTimeout(timer);
+  }, [query]);
 
   useEffect(() => {
     const loadBanks = async () => {

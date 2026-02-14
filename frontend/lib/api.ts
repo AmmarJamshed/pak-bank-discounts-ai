@@ -52,7 +52,7 @@ async function safeFetchJson<T = unknown>(
   }
 }
 
-const DEFAULT_LIMIT = "300"; // Smaller payload for faster load; search can return more
+const DEFAULT_LIMIT = "1500"; // Balance of speed and coverage
 
 export async function fetchDiscounts(params: Record<string, string>) {
   const url = new URL(`${API_BASE}/discounts`);
