@@ -5,3 +5,4 @@ publish = "out"
 
 [build.environment]
 NETLIFY_NEXT_PLUGIN_SKIP = "true"
+NEXT_PUBLIC_API_BASE_URL = "https://pak-bank-backend.onrender.com"
