@@ -80,8 +80,7 @@ async def list_discounts(
         for row in result.all()
     ]
 
-    discounts = [deal for deal in discounts if _is_readable(deal["merchant"])]
-
+    # No filter - show all deals from DB
     if intent:
         discounts = rank_discounts(discounts, city or "", intent)
     return {"count": len(discounts), "results": discounts}
