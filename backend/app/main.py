@@ -15,7 +15,7 @@ from app.tasks.scheduler import start_scheduler
 configure_logging()
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Pak Bank Discounts Intelligence API", version="1.0.0")
+app = FastAPI(title="Pak Bank Discounts Intelligence API", version="1.0.1")
 
 app.add_middleware(
     CORSMiddleware,
@@ -33,14 +33,18 @@ app.include_router(admin.router)
 
 @app.on_event("startup")
 async def on_startup():
-    await init_db()
-    async def bootstrap_data():
-        async for session in get_session():
-            await run_full_scrape(session)
-            await RAGService().rebuild_index(session)
+    from app.core.config import settings
 
-    asyncio.create_task(bootstrap_data())
-    start_scheduler(get_session)
+    await init_db()
+    if not settings.skip_bootstrap:
+        async def bootstrap_data():
+            async for session in get_session():
+                await run_full_scrape(session)
+                await RAGService().rebuild_index(session)
+
+        asyncio.create_task(bootstrap_data())
+    if not settings.disable_scheduler:
+        start_scheduler(get_session)
     logger.info("Application started")
 
 
