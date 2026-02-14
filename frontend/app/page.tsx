@@ -108,7 +108,9 @@ export default function HomePage() {
           </div>
           <div className="rounded-2xl border border-accent/30 bg-white/10 px-4 py-3 text-sm text-muted shadow-[0_0_20px_rgba(34,211,238,0.25)]">
             <span className="font-semibold text-ink">{discounts.length}</span> deals
-            available right now
+            {hasActiveFilters({ city, category, cardType, cardTier, bank, query })
+              ? " found"
+              : " — search to find specific merchants"}
           </div>
         </div>
 
@@ -163,7 +165,16 @@ export default function HomePage() {
           )}
           {!loading && !discounts.length && (
             <div className="rounded-xl border border-dashed border-border/60 bg-white/5 p-6 text-sm text-muted backdrop-blur">
-              {(loadError || backendError) ? (
+              {hasActiveFilters({ city, category, cardType, cardTier, bank, query }) ? (
+                <p className="text-center">
+                  No results present for your search.
+                  {query && (
+                    <span className="block mt-2">
+                      Try different keywords (e.g. merchant name, city, or category).
+                    </span>
+                  )}
+                </p>
+              ) : (loadError || backendError) ? (
                 <div className="space-y-3">
                   <p>
                     {backendError ||

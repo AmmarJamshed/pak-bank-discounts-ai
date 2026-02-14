@@ -52,10 +52,12 @@ async function safeFetchJson<T = unknown>(
   }
 }
 
+const DEFAULT_LIMIT = "300"; // Smaller payload for faster load; search can return more
+
 export async function fetchDiscounts(params: Record<string, string>) {
   const url = new URL(`${API_BASE}/discounts`);
   if (!params.limit) {
-    url.searchParams.set("limit", "5000");
+    url.searchParams.set("limit", DEFAULT_LIMIT);
   }
   Object.entries(params).forEach(([key, value]) => {
     if (value) {

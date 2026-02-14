@@ -25,7 +25,7 @@ def _keyword_filter(term: str):
         Merchant.category.ilike(pattern),
         Merchant.city.ilike(pattern),
         Card.name.ilike(pattern),
-        Discount.conditions.ilike(pattern),
+        func.coalesce(Discount.conditions, "").ilike(pattern),
     )
 
 
