@@ -46,6 +46,9 @@ CARD_TIER_MAP = {
     "basic": "Basic",
 }
 MAX_GROQ_FIXES = 50
+# Peekaboo: fetch more entities per page and paginate more (target 4000+ deals)
+PEEKABOO_PAGE_LIMIT = 50
+PEEKABOO_MAX_PAGES = 30
 MERCHANT_STOP_WORDS = re.compile(
     r"\b(with|using|via|when|till|until|valid|terms|conditions|offer|offers)\b",
     re.IGNORECASE,
@@ -482,14 +485,14 @@ async def _scrape_peekaboo(source: BankSource) -> list[ScrapedDeal]:
         "version": str(config.get("VERSION", "1.0.0")),
         "Content-Type": "application/json",
     }
-    limit = int(config.get("LIMIT", 12))
+    limit = max(int(config.get("LIMIT", 12)), PEEKABOO_PAGE_LIMIT)
     country = str(config.get("BASE_COUNTRY", "Pakistan"))
 
     deals: list[ScrapedDeal] = []
     async with httpx.AsyncClient(timeout=60, follow_redirects=True) as client:
         for city in KNOWN_CITIES:
             offset = 0
-            for _ in range(3):
+            for _ in range(PEEKABOO_MAX_PAGES):
                 payload = _peekaboo_entity_payload(city, country, limit, offset)
                 try:
                     response = await client.post(
@@ -554,7 +557,7 @@ async def scrape_source(source: BankSource) -> list[ScrapedDeal]:
 
     serp = SerpApiClient()
     query = f"site:{source.base_url} discounts offers card"
-    results = await serp.search(query, num=10)
+    results = await serp.search(query, num=100)
     urls = {source.website}
     for result in results:
         link = result.get("link")
