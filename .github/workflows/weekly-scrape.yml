@@ -1,0 +1,21 @@
+name: Weekly Scrape
+on:
+  schedule:
+    # Every Sunday at 02:00 UTC (~07:00 PKT)
+    - cron: "0 2 * * 0"
+  workflow_dispatch:
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger weekly scrape
+        env:
+          # Add secret RENDER_TRIGGER_SCRAPE_URL = https://pak-bank-backend-637y.onrender.com/admin/trigger-scrape
+          TRIGGER_URL: ${{ secrets.RENDER_TRIGGER_SCRAPE_URL }}
+        run: |
+          if [ -z "$TRIGGER_URL" ]; then
+            echo "::warning::RENDER_TRIGGER_SCRAPE_URL secret not set. Add it: https://pak-bank-backend-637y.onrender.com/admin/trigger-scrape"
+            exit 0
+          fi
+          echo "Triggering scrape (max 10 min wait for cold start)..."
+          curl -s -w "\nHTTP:%{http_code}" -X POST -m 600 "$TRIGGER_URL"

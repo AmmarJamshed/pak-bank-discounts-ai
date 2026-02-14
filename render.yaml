@@ -21,7 +21,8 @@ services:
         value: /tmp/faiss.index
       - key: FAISS_METADATA_PATH
         value: /tmp/faiss_meta.json
+      # Skip bootstrap for fast cold start; use GitHub Actions weekly scrape
       - key: SKIP_BOOTSTRAP
-        value: "false"
+        value: "true"
       - key: DISABLE_SCHEDULER
         value: "true"

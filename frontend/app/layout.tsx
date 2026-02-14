@@ -1,4 +1,5 @@
 import "../styles/globals.css";
+import MaintenanceBanner from "../components/MaintenanceBanner";
 
 export const metadata = {
   title: "Pak Bank Discounts Intelligence",
@@ -13,6 +14,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="min-h-screen">
+        <MaintenanceBanner />
         <header className="sticky top-0 z-50 border-b border-border/60 bg-surface/70 backdrop-blur">
           <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
             <a href="/" className="flex items-center gap-2 text-lg font-semibold text-ink">

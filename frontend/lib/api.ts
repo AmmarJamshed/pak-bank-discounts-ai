@@ -92,3 +92,17 @@ export async function fetchAdminTrends() {
     return null;
   }
 }
+
+export type MaintenanceStatus = { maintenance: boolean; message: string | null };
+
+export async function fetchMaintenanceStatus(): Promise<MaintenanceStatus> {
+  try {
+    const data = await fetchWithTimeout(`${API_BASE}/admin/maintenance`, 5000);
+    return {
+      maintenance: Boolean(data?.maintenance),
+      message: data?.message ?? null,
+    };
+  } catch {
+    return { maintenance: false, message: null };
+  }
+}

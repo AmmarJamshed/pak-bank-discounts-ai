@@ -1,11 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import DealCard from "../components/DealCard";
 import Filters from "../components/Filters";
 import SearchBar from "../components/SearchBar";
+import { getCachedDeals, setCachedDeals } from "../lib/cache";
 import { type Discount, fetchBanks, fetchDiscounts } from "../lib/api";
+
+const hasActiveFilters = (c: {
+  city: string;
+  category: string;
+  cardType: string;
+  cardTier: string;
+  bank: string;
+  query: string;
+}) => !!(c.city || c.category || c.cardType || c.cardTier || c.bank || c.query);
 
 export default function HomePage() {
   const [discounts, setDiscounts] = useState<Discount[]>([]);
@@ -19,31 +29,49 @@ export default function HomePage() {
 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
-
   const [backendError, setBackendError] = useState<string | null>(null);
 
-  const loadDiscounts = async () => {
-    setLoading(true);
+  const loadDiscounts = useCallback(async () => {
+    const cached = getCachedDeals();
+    const noFilters = !hasActiveFilters({ city, category, cardType, cardTier, bank, query });
+
+    if (noFilters && cached?.discounts?.length) {
+      setDiscounts(cached.discounts as Discount[]);
+      if (cached.banks?.length) setBanks(cached.banks);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
     setLoadError(false);
     setBackendError(null);
+
     const data = await fetchDiscounts({
       city,
       category,
       card_type: cardType,
       card_tier: cardTier,
       bank,
-      intent: query
+      intent: query,
     });
-    const results = data.results || [];
-    setDiscounts(results);
+    const results = (data.results || []) as Discount[];
+    if (!data.error) {
+      setDiscounts(results);
+      if (results.length > 0 && noFilters) {
+        setCachedDeals(results, banks.length ? banks : (cached?.banks ?? []));
+      }
+    }
     setLoading(false);
-    if (data.error) {
-      setBackendError(data.error);
+    if (data.error) setBackendError(data.error);
+    if (results.length === 0 && noFilters && !data.error) setLoadError(true);
+  }, [city, category, cardType, cardTier, bank, query, banks.length]);
+
+  useEffect(() => {
+    const cached = getCachedDeals();
+    if (cached?.discounts?.length && !hasActiveFilters({ city, category, cardType, cardTier, bank, query })) {
+      setDiscounts(cached.discounts as Discount[]);
+      if (cached.banks?.length) setBanks(cached.banks);
     }
-    if (results.length === 0 && !city && !category && !cardType && !cardTier && !bank && !query) {
-      setLoadError(true);
-    }
-  };
+  }, []);
 
   useEffect(() => {
     loadDiscounts();
@@ -51,6 +79,8 @@ export default function HomePage() {
 
   useEffect(() => {
     const loadBanks = async () => {
+      const cached = getCachedDeals();
+      if (cached?.banks?.length) setBanks(cached.banks);
       const data = await fetchBanks();
       const names = (data.results || [])
         .map((item: { name: string }) => item.name)

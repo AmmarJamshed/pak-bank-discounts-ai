@@ -6,13 +6,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Bank, Card, Discount, Merchant
 from app.db.session import get_session
+from app.services.scrape_state import is_maintenance, set_scraping
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 
+@router.get("/maintenance")
+async def maintenance_status():
+    """Returns maintenance flag for weekly scrape window (used by frontend banner)."""
+    ok, msg = is_maintenance()
+    return {"maintenance": ok, "message": msg}
+
+
 @router.post("/trigger-scrape")
 async def trigger_scrape(background_tasks: BackgroundTasks):
-    """Trigger scraper in background. Use from cron (cron-job.org etc) or manually."""
+    """Trigger scraper in background. Use from cron (GitHub Actions etc) or manually."""
 
     def _run():
         import asyncio
@@ -21,17 +29,21 @@ async def trigger_scrape(background_tasks: BackgroundTasks):
         from app.services.scraper import run_full_scrape
         from app.tasks.scheduler import expire_old_discounts
 
-        async def _scrape():
-            async with AsyncSessionLocal() as session:
-                inserted = await run_full_scrape(session)
-                await expire_old_discounts(session)
-                try:
-                    await RAGService().rebuild_index(session)
-                except Exception:
-                    pass
-                return inserted
+        set_scraping(True)
+        try:
+            async def _scrape():
+                async with AsyncSessionLocal() as session:
+                    inserted = await run_full_scrape(session)
+                    await expire_old_discounts(session)
+                    try:
+                        await RAGService().rebuild_index(session)
+                    except Exception:
+                        pass
+                    return inserted
 
-        return asyncio.run(_scrape())
+            asyncio.run(_scrape())
+        finally:
+            set_scraping(False)
 
     background_tasks.add_task(_run)
     return {"status": "started", "message": "Scraper running in background"}
