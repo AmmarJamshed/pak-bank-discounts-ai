@@ -21,8 +21,8 @@ services:
         value: /tmp/faiss.index
       - key: FAISS_METADATA_PATH
         value: /tmp/faiss_meta.json
-      # Run initial scrape on deploy to populate DB; weekly scrape via GitHub Actions
+      # Skip scrape on deploy - DB already populated; use cron/GitHub Actions for scraping
       - key: SKIP_BOOTSTRAP
-        value: "false"
+        value: "true"
       - key: DISABLE_SCHEDULER
         value: "true"
