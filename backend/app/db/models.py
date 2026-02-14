@@ -26,6 +26,18 @@ class Bank(Base):
     cards: Mapped[list["Card"]] = relationship(back_populates="bank")
 
 
+class ScrapeSource(Base):
+    """Persisted bank sources for scraping. When populated, scraper uses these for future fetches."""
+    __tablename__ = "scrape_sources"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    bank_name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    website: Mapped[str] = mapped_column(String(500), nullable=False)
+    base_url: Mapped[str] = mapped_column(String(255), nullable=False)
+    peekaboo_base: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    is_active: Mapped[bool] = mapped_column(default=True, nullable=False)
+
+
 class Card(Base):
     __tablename__ = "cards"
 

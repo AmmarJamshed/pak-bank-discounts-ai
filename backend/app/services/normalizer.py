@@ -10,6 +10,18 @@ CITY_ALIASES = {
     "multan": "Multan",
     "peshawar": "Peshawar",
     "quetta": "Quetta",
+    "hyderabad": "Hyderabad",
+    "sialkot": "Sialkot",
+    "gujranwala": "Gujranwala",
+    "bahawalpur": "Bahawalpur",
+    "sargodha": "Sargodha",
+    "sukkur": "Sukkur",
+    "larkana": "Larkana",
+    "mingora": "Mingora",
+    "muzaffarabad": "Muzaffarabad",
+    "mirpur": "Mirpur",
+    "abbottabad": "Abbottabad",
+    "dera ismail khan": "Dera Ismail Khan",
 }
 
 CATEGORY_ALIASES = {

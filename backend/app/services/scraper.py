@@ -18,11 +18,12 @@ from app.services.groq_client import GroqClient
 from app.services.normalizer import normalize_category, normalize_city
 from app.services.serp_client import SerpApiClient
 from app.utils.text import clean_text, parse_discount_percent
-from app.db.models import Bank, Card, Discount, Merchant
+from app.db.models import Bank, Card, Discount, Merchant, ScrapeSource
 
 logger = logging.getLogger(__name__)
 
 
+# Cover all major Pakistan cities for Peekaboo (target 4000+ deals nationwide)
 KNOWN_CITIES = [
     "Karachi",
     "Lahore",
@@ -35,6 +36,15 @@ KNOWN_CITIES = [
     "Hyderabad",
     "Sialkot",
     "Gujranwala",
+    "Bahawalpur",
+    "Sargodha",
+    "Sukkur",
+    "Larkana",
+    "Mingora",
+    "Muzaffarabad",
+    "Mirpur",
+    "Abbottabad",
+    "Dera Ismail Khan",
 ]
 
 CARD_TIER_MAP = {
@@ -532,6 +542,8 @@ async def _scrape_peekaboo(source: BankSource) -> list[ScrapedDeal]:
                     break
 
                 for entity in entities:
+                    if not isinstance(entity, dict):
+                        continue
                     max_discount = float(entity.get("maxDiscount") or 0)
                     if max_discount <= 0:
                         continue
@@ -761,13 +773,34 @@ async def _scrape_and_sync_bank(
     return await sync_deals(session, source, deals)
 
 
+async def get_sources(session: AsyncSession) -> list[BankSource]:
+    """Return sources from scrape_sources table if populated, else fall back to SOURCES."""
+    result = await session.execute(
+        select(ScrapeSource).where(ScrapeSource.is_active == True).order_by(ScrapeSource.bank_name)
+    )
+    rows = result.scalars().all()
+    if rows:
+        return [
+            BankSource(
+                name=r.bank_name,
+                website=r.website,
+                base_url=r.base_url,
+                peekaboo_base=r.peekaboo_base,
+            )
+            for r in rows
+        ]
+    return SOURCES
+
+
 async def run_full_scrape(session: AsyncSession) -> int:
     """Scrape all banks. Each bank runs NEW+EXPIRED+UPDATED sync.
     Banks run sequentially to avoid DB contention."""
     total_inserted = 0
     total_expired = 0
     total_updated = 0
-    for source in SOURCES:
+    sources = await get_sources(session)
+    logger.info("Using %d sources for scrape", len(sources))
+    for source in sources:
         inserted, expired, updated = await _scrape_and_sync_bank(session, source)
         total_inserted += inserted
         total_expired += expired
