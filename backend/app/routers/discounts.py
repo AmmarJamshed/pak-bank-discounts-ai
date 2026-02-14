@@ -1,7 +1,7 @@
 import re
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Bank, Card, Discount, Merchant
@@ -15,6 +15,18 @@ def _is_readable(text: str) -> bool:
     """Filter only empty/null. Show all deals to reach 4000+ target."""
     cleaned = re.sub(r"\s+", " ", (text or "").strip())
     return bool(cleaned)
+
+
+def _keyword_filter(term: str):
+    """Build OR condition: term matches merchant, category, city, conditions, or card name."""
+    pattern = f"%{term}%"
+    return or_(
+        Merchant.name.ilike(pattern),
+        Merchant.category.ilike(pattern),
+        Merchant.city.ilike(pattern),
+        Card.name.ilike(pattern),
+        Discount.conditions.ilike(pattern),
+    )
 
 
 @router.get("")
@@ -59,6 +71,13 @@ async def list_discounts(
         query = query.where(func.lower(Card.type) == card_type.lower())
     if card_tier:
         query = query.where(func.lower(Card.tier) == card_tier.lower())
+
+    # Keyword search: filter to deals matching the search term (exact substring in merchant, category, etc.)
+    if intent and intent.strip():
+        words = [w.strip() for w in intent.split() if w.strip()]
+        if words:
+            for word in words:
+                query = query.where(_keyword_filter(word))
 
     result = await session.execute(query.limit(limit))
     discounts = [
