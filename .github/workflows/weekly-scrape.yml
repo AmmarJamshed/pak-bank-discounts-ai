@@ -10,11 +10,11 @@ jobs:
     steps:
       - name: Trigger weekly scrape
         env:
-          # Add secret RENDER_TRIGGER_SCRAPE_URL = https://pak-bank-backend-637y.onrender.com/admin/trigger-scrape
+          # Add secret RENDER_TRIGGER_SCRAPE_URL = https://pak-bank-backend.onrender.com/admin/trigger-scrape
           TRIGGER_URL: ${{ secrets.RENDER_TRIGGER_SCRAPE_URL }}
         run: |
           if [ -z "$TRIGGER_URL" ]; then
-            echo "::warning::RENDER_TRIGGER_SCRAPE_URL secret not set. Add it: https://pak-bank-backend-637y.onrender.com/admin/trigger-scrape"
+            echo "::warning::RENDER_TRIGGER_SCRAPE_URL secret not set. Add it: https://pak-bank-backend.onrender.com/admin/trigger-scrape"
             exit 0
           fi
           echo "Triggering scrape (max 10 min wait for cold start)..."

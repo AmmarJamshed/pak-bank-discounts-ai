@@ -19,7 +19,7 @@ export type FetchResult<T> =
   | { results: T[]; error?: never }
   | { results: T[]; error: string };
 
-async function fetchWithTimeout(url: string, timeoutMs = 60000) {
+async function fetchWithTimeout(url: string, timeoutMs = 90000) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {

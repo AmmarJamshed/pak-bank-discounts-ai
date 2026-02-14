@@ -176,7 +176,7 @@ export default function HomePage() {
                     </code>
                     . Check{" "}
                     <a
-                      href={`${(process.env.NEXT_PUBLIC_API_BASE_URL || "https://pak-bank-backend-637y.onrender.com").replace(/\/$/, "")}/health`}
+                      href={`${(process.env.NEXT_PUBLIC_API_BASE_URL || "https://pak-bank-backend.onrender.com").replace(/\/$/, "")}/health`}
                       target="_blank"
                       rel="noreferrer"
                       className="text-accent underline"
