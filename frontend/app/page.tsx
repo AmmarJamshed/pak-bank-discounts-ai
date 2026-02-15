@@ -259,7 +259,7 @@ export default function HomePage() {
                   </p>
                   <button
                     type="button"
-                    onClick={loadDiscounts}
+                    onClick={() => loadDiscounts(0, false)}
                     className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110"
                   >
                     Retry loading deals
