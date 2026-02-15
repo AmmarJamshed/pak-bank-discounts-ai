@@ -33,8 +33,10 @@ export default function ChatPanel() {
         signal: controller.signal,
       });
       clearTimeout(timeout);
-      const data = await response.json();
-      const text = data?.response || "No response available.";
+      const data = await response.json().catch(() => ({}));
+      const text =
+        data?.response ||
+        (response.ok ? "No response available." : "The assistant is temporarily unavailable. Please try again.");
       setMessages((prev) => [...prev, { role: "assistant", content: text }]);
     } catch (error) {
       clearTimeout(timeout);

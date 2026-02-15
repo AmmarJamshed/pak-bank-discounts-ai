@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import re
 from typing import Any
@@ -5,8 +6,8 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.db.models import Bank, Card, Discount, Merchant
-from app.services.groq_client import GroqClient
 from app.services.rag import RAGService
 from app.services.recommender import rank_cards, rank_discounts
 from app.services.serp_client import SerpApiClient
@@ -448,15 +449,31 @@ async def run_assistant(
     session: AsyncSession, query: str, use_rag: bool = True
 ) -> dict[str, Any]:
     intent = parse_intent(query)
-    rag_service = RAGService()
-    serp_client = SerpApiClient()
     keywords = _extract_keywords(query)
     search_keywords = _keywords_for_search(keywords, intent)
 
-    rag_hits = rag_service.search(query, top_k=6) if use_rag else []
-    discounts = await _fetch_discount_candidates(
-        session, intent.get("city"), intent.get("category")
-    )
+    rag_hits: list[dict] = []
+    if use_rag and not settings.skip_rag:
+        try:
+            rag_service = RAGService()
+            rag_hits = await asyncio.to_thread(rag_service.search, query, 6)
+        except Exception as e:
+            logger.warning("RAG search failed, continuing without: %s", e)
+            rag_hits = []
+
+    try:
+        discounts = await _fetch_discount_candidates(
+            session, intent.get("city"), intent.get("category")
+        )
+    except Exception as e:
+        logger.exception("Failed to fetch discount candidates: %s", e)
+        return {
+            "intent": intent,
+            "recommendations": [],
+            "card_suggestions": [],
+            "serp_fallback": [],
+            "response": "I'm having trouble reaching the database right now. Please try again in a moment.",
+        }
 
     if not discounts and rag_hits:
         discounts = rag_hits
@@ -470,11 +487,20 @@ async def run_assistant(
             intent["keyword_focus"] = False
 
     ranked = rank_discounts(discounts, intent.get("city") or "", query)
-    cards = await _build_card_suggestions(session)
 
-    serp_fallback = []
+    try:
+        cards = await _build_card_suggestions(session)
+    except Exception as e:
+        logger.warning("Card suggestions failed: %s", e)
+        cards = []
+
+    serp_fallback: list[dict] = []
     if not ranked:
-        serp_fallback = await serp_client.search(query, num=5)
+        try:
+            serp_client = SerpApiClient()
+            serp_fallback = await serp_client.search(query, num=5)
+        except Exception as e:
+            logger.warning("SERP fallback failed: %s", e)
 
     response = _build_human_response(query, ranked[:12], cards, intent)
 

@@ -24,5 +24,7 @@ services:
       # Skip scrape on deploy - DB already populated; use cron/GitHub Actions for scraping
       - key: SKIP_BOOTSTRAP
         value: "true"
+      - key: SKIP_RAG
+        value: "true"
       - key: DISABLE_SCHEDULER
         value: "true"

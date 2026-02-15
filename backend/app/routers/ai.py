@@ -1,4 +1,5 @@
 import asyncio
+import logging
 
 from fastapi import APIRouter, Body, Depends, Query
 from fastapi.responses import StreamingResponse
@@ -24,7 +25,17 @@ async def chat(
     final_query = query or (payload.query if payload else None)
     if not final_query:
         return {"response": "Missing query."}
-    return await run_assistant(session, final_query)
+    try:
+        return await run_assistant(session, final_query)
+    except Exception as exc:
+        logging.getLogger(__name__).exception("AI assistant error: %s", exc)
+        return {
+            "intent": {},
+            "recommendations": [],
+            "card_suggestions": [],
+            "serp_fallback": [],
+            "response": "The AI assistant is temporarily unavailable. Please try again in a moment.",
+        }
 
 
 @router.get("/stream")

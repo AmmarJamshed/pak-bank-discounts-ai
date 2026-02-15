@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     faiss_index_path: str = "./data/faiss.index"
     faiss_metadata_path: str = "./data/faiss_meta.json"
     skip_bootstrap: bool = False  # skip scrape+RAG on startup (e.g. PythonAnywhere)
+    skip_rag: bool = False  # skip RAG in AI assistant (e.g. Render free tier – no index)
     disable_scheduler: bool = False  # use cron instead of APScheduler (e.g. PythonAnywhere)
 
     @field_validator("database_url", mode="before")
