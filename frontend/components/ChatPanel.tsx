@@ -2,13 +2,12 @@
 
 import { useState } from "react";
 
+import { API_BASE } from "../lib/api";
+
 type Message = {
   role: "user" | "assistant";
   content: string;
 };
-
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "https://pak-bank-backend-637y.onrender.com";
 const AI_TIMEOUT_MS = 60000; // 60s for cold start on Render free tier
 
 export default function ChatPanel() {

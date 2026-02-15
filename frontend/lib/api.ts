@@ -1,5 +1,7 @@
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+// Fallback ensures production works even if env not set at build time
+export const API_BASE =
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  (typeof window !== "undefined" ? "https://pak-bank-backend-637y.onrender.com" : "http://localhost:8000");
 
 export type Discount = {
   discount_id: number;

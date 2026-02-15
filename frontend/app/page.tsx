@@ -116,6 +116,7 @@ export default function HomePage() {
     loadDiscountsRef.current(0, false);
   }, [city, category, cardType, cardTier, bank]);
 
+  // Search: when query changes, refetch (debounce 300ms when typing)
   const isInitialMount = useRef(true);
   useEffect(() => {
     if (isInitialMount.current) {
@@ -126,7 +127,7 @@ export default function HomePage() {
       loadDiscountsRef.current(0, false);
       return;
     }
-    const timer = setTimeout(() => loadDiscountsRef.current(0, false), 400);
+    const timer = setTimeout(() => loadDiscountsRef.current(0, false), 300);
     return () => clearTimeout(timer);
   }, [query]);
 
