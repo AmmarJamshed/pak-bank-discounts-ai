@@ -6,7 +6,7 @@ import DealCard from "../components/DealCard";
 import Filters from "../components/Filters";
 import SearchBar from "../components/SearchBar";
 import { getCachedDeals, setCachedDeals } from "../lib/cache";
-import { type Discount, fetchBanks, fetchDiscounts } from "../lib/api";
+import { type Discount, fetchBanks, fetchCards, fetchDiscounts, fetchFilterOptions } from "../lib/api";
 
 const PAGE_SIZE = 48;
 
@@ -16,8 +16,9 @@ const hasActiveFilters = (c: {
   cardType: string;
   cardTier: string;
   bank: string;
+  card: string;
   query: string;
-}) => !!(c.city || c.category || c.cardType || c.cardTier || c.bank || c.query);
+}) => !!(c.city || c.category || c.cardType || c.cardTier || c.bank || c.card || c.query);
 
 export default function HomePage() {
   const [discounts, setDiscounts] = useState<Discount[]>([]);
@@ -27,7 +28,10 @@ export default function HomePage() {
   const [cardType, setCardType] = useState("");
   const [cardTier, setCardTier] = useState("");
   const [bank, setBank] = useState("");
+  const [card, setCard] = useState("");
   const [banks, setBanks] = useState<string[]>([]);
+  const [cards, setCards] = useState<{ card_name: string; bank: string }[]>([]);
+  const [availableTiers, setAvailableTiers] = useState<string[]>([]);
   const [query, setQuery] = useState("");
 
   const [loading, setLoading] = useState(true);
@@ -37,7 +41,7 @@ export default function HomePage() {
 
   const loadDiscounts = useCallback(async (offset = 0, append = false) => {
     const cached = getCachedDeals();
-    const noFilters = !hasActiveFilters({ city, category, cardType, cardTier, bank, query });
+    const noFilters = !hasActiveFilters({ city, category, cardType, cardTier, bank, card, query });
 
     if (!append) {
       setLoading(true);
@@ -53,6 +57,7 @@ export default function HomePage() {
       card_type: cardType,
       card_tier: cardTier,
       bank,
+      card,
       intent: query,
       limit: PAGE_SIZE,
       offset,
@@ -79,7 +84,7 @@ export default function HomePage() {
     setLoadingMore(false);
     if (data.error) setBackendError(data.error);
     if (results.length === 0 && noFilters && !data.error && !append) setLoadError(true);
-  }, [city, category, cardType, cardTier, bank, query, banks.length]);
+  }, [city, category, cardType, cardTier, bank, card, query, banks.length]);
 
   const loadMore = useCallback(() => {
     if (loadingMore || loading || discounts.length >= totalCount) return;
@@ -103,7 +108,7 @@ export default function HomePage() {
 
   useEffect(() => {
     const cached = getCachedDeals();
-    if (cached?.discounts?.length && !hasActiveFilters({ city, category, cardType, cardTier, bank, query })) {
+    if (cached?.discounts?.length && !hasActiveFilters({ city, category, cardType, cardTier, bank, card, query })) {
       setDiscounts(cached.discounts as Discount[]);
       setTotalCount(cached.totalCount ?? (cached.discounts as Discount[]).length);
       if (cached.banks?.length) setBanks(cached.banks);
@@ -114,7 +119,7 @@ export default function HomePage() {
   loadDiscountsRef.current = loadDiscounts;
   useEffect(() => {
     loadDiscountsRef.current(0, false);
-  }, [city, category, cardType, cardTier, bank]);
+  }, [city, category, cardType, cardTier, bank, card]);
 
   // Search: when query changes, refetch (debounce 300ms when typing)
   const isInitialMount = useRef(true);
@@ -144,6 +149,35 @@ export default function HomePage() {
     loadBanks();
   }, []);
 
+  useEffect(() => {
+    const loadCards = async () => {
+      if (!bank.trim()) {
+        setCards([]);
+        setCard("");
+        return;
+      }
+      setCard("");
+      const data = await fetchCards(bank);
+      const list = (data.results || []) as { card_name: string; bank: string }[];
+      setCards(list);
+    };
+    loadCards();
+  }, [bank]);
+
+  useEffect(() => {
+    const loadFilterOptions = async () => {
+      const opts = await fetchFilterOptions(bank || undefined, cardType || undefined);
+      setAvailableTiers(opts.card_tiers);
+    };
+    loadFilterOptions();
+  }, [bank, cardType]);
+
+  useEffect(() => {
+    if (availableTiers.length > 0 && cardTier && !availableTiers.includes(cardTier)) {
+      setCardTier("");
+    }
+  }, [availableTiers, cardTier]);
+
   return (
     <div className="space-y-8">
       <section className="rounded-3xl border border-border/60 bg-white/5 px-6 py-8 shadow-[0_0_40px_rgba(16,185,129,0.08)] backdrop-blur md:px-10">
@@ -163,7 +197,7 @@ export default function HomePage() {
           <div className="rounded-2xl border border-accent/30 bg-white/10 px-4 py-3 text-sm text-muted shadow-[0_0_20px_rgba(34,211,238,0.25)]">
             <span className="font-semibold text-ink">{discounts.length}</span> of{" "}
             <span className="font-semibold text-ink">{totalCount}</span> deals
-            {hasActiveFilters({ city, category, cardType, cardTier, bank, query })
+            {hasActiveFilters({ city, category, cardType, cardTier, bank, card, query })
               ? " found"
               : " — scroll for more"}
           </div>
@@ -177,13 +211,27 @@ export default function HomePage() {
             cardType={cardType}
             cardTier={cardTier}
             bank={bank}
+            card={card}
             banks={banks}
+            cards={cards}
+            availableTiers={availableTiers}
             onChange={(field, value) => {
               if (field === "city") setCity(value);
               if (field === "category") setCategory(value);
-              if (field === "cardType") setCardType(value);
+              if (field === "cardType") {
+                setCardType(value);
+                if (value) setCardTier("");
+              }
               if (field === "cardTier") setCardTier(value);
-              if (field === "bank") setBank(value);
+              if (field === "bank") {
+                setBank(value);
+                if (value) {
+                  setCardType("");
+                  setCardTier("");
+                  setCard("");
+                }
+              }
+              if (field === "card") setCard(value);
             }}
           />
         </div>
@@ -226,7 +274,7 @@ export default function HomePage() {
           )}
           {!loading && !discounts.length && (
             <div className="rounded-xl border border-dashed border-border/60 bg-white/5 p-6 text-sm text-muted backdrop-blur">
-              {hasActiveFilters({ city, category, cardType, cardTier, bank, query }) ? (
+              {hasActiveFilters({ city, category, cardType, cardTier, bank, card, query }) ? (
                 <p className="text-center">
                   No results present for your search.
                   {query && (
@@ -234,6 +282,14 @@ export default function HomePage() {
                       Try different keywords (e.g. merchant name, city, or category).
                     </span>
                   )}
+                  {(cardType || cardTier || bank) && (
+                    <span className="mt-2 block text-xs">
+                      Tip: Try fewer filters — e.g. select just bank or just card type (Credit/Debit) for more results.
+                    </span>
+                  )}
+                  <span className="mt-2 block text-xs">
+                    For area searches like &quot;DHA Karachi&quot;, try selecting just the city for more results.
+                  </span>
                 </p>
               ) : (loadError || backendError) ? (
                 <div className="space-y-3">

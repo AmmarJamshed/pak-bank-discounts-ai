@@ -1,12 +1,18 @@
+const ALL_TIERS = ["Basic", "Classic", "Gold", "Platinum", "Signature", "Infinite"];
+
 type FiltersProps = {
   city: string;
   category: string;
   cardType: string;
   cardTier: string;
   bank: string;
+  card: string;
   banks: string[];
+  cards: { card_name: string; bank: string }[];
+  /** Tiers available for current bank+cardType (empty = show all) */
+  availableTiers: string[];
   onChange: (
-    field: "city" | "category" | "cardType" | "cardTier" | "bank",
+    field: "city" | "category" | "cardType" | "cardTier" | "bank" | "card",
     value: string
   ) => void;
 };
@@ -18,7 +24,20 @@ const cities = [
   "Rawalpindi",
   "Faisalabad",
   "Multan",
-  "Peshawar"
+  "Peshawar",
+  "Quetta",
+  "Hyderabad",
+  "Sialkot",
+  "Gujranwala",
+  "Bahawalpur",
+  "Sargodha",
+  "Sukkur",
+  "Larkana",
+  "Mingora",
+  "Muzaffarabad",
+  "Mirpur",
+  "Abbottabad",
+  "Dera Ismail Khan"
 ];
 
 const categories = [
@@ -32,8 +51,7 @@ const categories = [
   "Entertainment"
 ];
 
-const cardTypes = ["Card", "Credit", "Debit"];
-const cardTiers = ["Basic", "Classic", "Gold", "Platinum", "Signature", "Infinite"];
+const cardTypes = ["Credit", "Debit"];
 
 export default function Filters({
   city,
@@ -41,9 +59,13 @@ export default function Filters({
   cardType,
   cardTier,
   bank,
+  card,
   banks,
+  cards,
+  availableTiers,
   onChange
 }: FiltersProps) {
+  const cardTiersToShow = availableTiers.length > 0 ? availableTiers : ALL_TIERS;
   return (
     <div className="flex flex-wrap gap-3">
       <select
@@ -82,12 +104,26 @@ export default function Filters({
           </option>
         ))}
       </select>
+      {bank && cards.length > 0 && (
+        <select
+          value={card}
+          onChange={(event) => onChange("card", event.target.value)}
+          className="rounded-2xl border border-border/60 bg-white/5 px-4 py-3 text-sm text-ink shadow-sm backdrop-blur placeholder:text-muted/80 focus:border-primary focus:outline-none"
+        >
+          <option value="">My Card (All)</option>
+          {cards.map((c) => (
+            <option key={c.card_name} value={c.card_name}>
+              {c.card_name}
+            </option>
+          ))}
+        </select>
+      )}
       <select
         value={cardType}
         onChange={(event) => onChange("cardType", event.target.value)}
         className="rounded-2xl border border-border/60 bg-white/5 px-4 py-3 text-sm text-ink shadow-sm backdrop-blur placeholder:text-muted/80 focus:border-primary focus:outline-none"
       >
-        <option value="">Card Category</option>
+        <option value="">Card Type</option>
         {cardTypes.map((item) => (
           <option key={item} value={item}>
             {item}
@@ -95,12 +131,12 @@ export default function Filters({
         ))}
       </select>
       <select
-        value={cardTier}
+        value={cardTiersToShow.includes(cardTier) ? cardTier : ""}
         onChange={(event) => onChange("cardTier", event.target.value)}
         className="rounded-2xl border border-border/60 bg-white/5 px-4 py-3 text-sm text-ink shadow-sm backdrop-blur placeholder:text-muted/80 focus:border-primary focus:outline-none"
       >
         <option value="">Card Tier</option>
-        {cardTiers.map((item) => (
+        {cardTiersToShow.map((item) => (
           <option key={item} value={item}>
             {item}
           </option>

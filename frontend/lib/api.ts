@@ -77,6 +77,30 @@ export async function fetchBanks() {
   return safeFetchJson<{ name: string }>(`${API_BASE}/banks`);
 }
 
+export async function fetchCards(bank?: string) {
+  const url = new URL(`${API_BASE}/discounts/cards`);
+  if (bank && bank.trim()) {
+    url.searchParams.set("bank", bank.trim());
+  }
+  return safeFetchJson<{ card_name: string; bank: string }>(url.toString());
+}
+
+export type FilterOptions = { card_tiers: string[] };
+
+export async function fetchFilterOptions(bank?: string, cardType?: string): Promise<FilterOptions> {
+  const url = new URL(`${API_BASE}/discounts/filter-options`);
+  if (bank?.trim()) url.searchParams.set("bank", bank.trim());
+  if (cardType?.trim()) url.searchParams.set("card_type", cardType.trim());
+  try {
+    const data = await fetchWithTimeout(url.toString());
+    return {
+      card_tiers: Array.isArray(data?.card_tiers) ? data.card_tiers : [],
+    };
+  } catch {
+    return { card_tiers: [] };
+  }
+}
+
 export async function fetchAdminAnalytics() {
   try {
     return await fetchWithTimeout(`${API_BASE}/admin/analytics`);
