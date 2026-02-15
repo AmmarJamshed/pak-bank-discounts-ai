@@ -1,95 +1,58 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 
 type Message = {
   role: "user" | "assistant";
   content: string;
 };
 
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_BASE_URL || "https://pak-bank-backend-637y.onrender.com";
+const AI_TIMEOUT_MS = 60000; // 60s for cold start on Render free tier
+
 export default function ChatPanel() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
-  const eventRef = useRef<EventSource | null>(null);
-  const timeoutRef = useRef<number | null>(null);
-  const apiBase =
-    process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
-  useEffect(() => {
-    return () => {
-      eventRef.current?.close();
-      if (timeoutRef.current) {
-        window.clearTimeout(timeoutRef.current);
-      }
-    };
-  }, []);
-
-  const fetchFallback = async (query: string) => {
-    try {
-      const response = await fetch(`${apiBase}/ai/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query })
-      });
-      const data = await response.json();
-      const text = data?.response || "No response available.";
-      setMessages((prev) => [...prev, { role: "assistant", content: text }]);
-    } catch (error) {
-      console.error("AI fallback failed", error);
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: "AI assistant is unavailable right now. Please try again."
-        }
-      ]);
-    } finally {
-      setStreaming(false);
-    }
-  };
-
-  const sendMessage = () => {
+  const sendMessage = async () => {
     if (!input.trim() || streaming) return;
     const query = input.trim();
     setMessages((prev) => [...prev, { role: "user", content: query }]);
     setInput("");
     setStreaming(true);
 
-    const url = new URL(`${apiBase}/ai/stream`);
-    url.searchParams.set("query", query);
-    const source = new EventSource(url.toString());
-    eventRef.current = source;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
 
-    let assistantText = "";
-    let hasChunk = false;
-    source.onmessage = (event) => {
-      if (event.data === "[DONE]") {
-        const decoded = assistantText.replace(/\\n/g, "\n");
-        setMessages((prev) => [...prev, { role: "assistant", content: decoded }]);
-        setStreaming(false);
-        source.close();
-        return;
-      }
-      if (!hasChunk) {
-        hasChunk = true;
-        if (timeoutRef.current) {
-          window.clearTimeout(timeoutRef.current);
-        }
-      }
-      assistantText += event.data;
-    };
-    source.onerror = () => {
-      source.close();
-      fetchFallback(query);
-    };
-
-    timeoutRef.current = window.setTimeout(() => {
-      if (!hasChunk) {
-        source.close();
-        fetchFallback(query);
-      }
-    }, 12000);
+    try {
+      const response = await fetch(`${API_BASE}/ai/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      const data = await response.json();
+      const text = data?.response || "No response available.";
+      setMessages((prev) => [...prev, { role: "assistant", content: text }]);
+    } catch (error) {
+      clearTimeout(timeout);
+      const isTimeout = error instanceof Error && error.name === "AbortError";
+      console.error("AI request failed", error);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: isTimeout
+            ? "The backend is starting (Render free tier). Wait 30 seconds and try again."
+            : "AI assistant is unavailable right now. Please try again.",
+        },
+      ]);
+    } finally {
+      setStreaming(false);
+    }
   };
 
   return (
