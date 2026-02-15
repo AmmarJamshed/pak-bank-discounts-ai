@@ -8,6 +8,8 @@ import SearchBar from "../components/SearchBar";
 import { getCachedDeals, setCachedDeals } from "../lib/cache";
 import { type Discount, fetchBanks, fetchDiscounts } from "../lib/api";
 
+const PAGE_SIZE = 48;
+
 const hasActiveFilters = (c: {
   city: string;
   category: string;
@@ -19,6 +21,7 @@ const hasActiveFilters = (c: {
 
 export default function HomePage() {
   const [discounts, setDiscounts] = useState<Discount[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [city, setCity] = useState("");
   const [category, setCategory] = useState("");
   const [cardType, setCardType] = useState("");
@@ -28,19 +31,18 @@ export default function HomePage() {
   const [query, setQuery] = useState("");
 
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [backendError, setBackendError] = useState<string | null>(null);
 
-  const loadDiscounts = useCallback(async () => {
+  const loadDiscounts = useCallback(async (offset = 0, append = false) => {
     const cached = getCachedDeals();
     const noFilters = !hasActiveFilters({ city, category, cardType, cardTier, bank, query });
 
-    if (noFilters && cached?.discounts?.length) {
-      setDiscounts(cached.discounts as Discount[]);
-      if (cached.banks?.length) setBanks(cached.banks);
-      setLoading(false);
-    } else {
+    if (!append) {
       setLoading(true);
+    } else {
+      setLoadingMore(true);
     }
     setLoadError(false);
     setBackendError(null);
@@ -52,46 +54,79 @@ export default function HomePage() {
       card_tier: cardTier,
       bank,
       intent: query,
+      limit: PAGE_SIZE,
+      offset,
     });
     const results = (data.results || []) as Discount[];
+    const total = data.total_count ?? results.length;
+
     if (!data.error) {
-      setDiscounts(results);
-      if (noFilters) {
-        setCachedDeals(results, banks.length ? banks : (cached?.banks ?? []));
+      setTotalCount(total);
+      if (append) {
+        setDiscounts((prev) => [...prev, ...results]);
+      } else {
+        setDiscounts(results);
+        if (noFilters && offset === 0) {
+          setCachedDeals(
+            results,
+            banks.length ? banks : (cached?.banks ?? []),
+            total
+          );
+        }
       }
     }
     setLoading(false);
+    setLoadingMore(false);
     if (data.error) setBackendError(data.error);
-    if (results.length === 0 && noFilters && !data.error) setLoadError(true);
+    if (results.length === 0 && noFilters && !data.error && !append) setLoadError(true);
   }, [city, category, cardType, cardTier, bank, query, banks.length]);
+
+  const loadMore = useCallback(() => {
+    if (loadingMore || loading || discounts.length >= totalCount) return;
+    loadDiscounts(discounts.length, true);
+  }, [loadingMore, loading, discounts.length, totalCount, loadDiscounts]);
+
+  // Infinite scroll: load more when user scrolls near bottom
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) loadMore();
+      },
+      { rootMargin: "200px", threshold: 0.1 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [loadMore]);
 
   useEffect(() => {
     const cached = getCachedDeals();
     if (cached?.discounts?.length && !hasActiveFilters({ city, category, cardType, cardTier, bank, query })) {
       setDiscounts(cached.discounts as Discount[]);
+      setTotalCount(cached.totalCount ?? (cached.discounts as Discount[]).length);
       if (cached.banks?.length) setBanks(cached.banks);
     }
   }, []);
 
-  // Refetch when filters change
-  useEffect(() => {
-    loadDiscounts();
-  }, [city, category, cardType, cardTier, bank]);
-
-  // Debounced search: when user stops typing, auto-search; clear triggers refetch
-  const isInitialMount = useRef(true);
   const loadDiscountsRef = useRef(loadDiscounts);
   loadDiscountsRef.current = loadDiscounts;
   useEffect(() => {
+    loadDiscountsRef.current(0, false);
+  }, [city, category, cardType, cardTier, bank]);
+
+  const isInitialMount = useRef(true);
+  useEffect(() => {
     if (isInitialMount.current) {
       isInitialMount.current = false;
-      if (!query.trim()) return; // Filters effect handles initial load
+      if (!query.trim()) return;
     }
     if (!query.trim()) {
-      loadDiscountsRef.current();
+      loadDiscountsRef.current(0, false);
       return;
     }
-    const timer = setTimeout(() => loadDiscountsRef.current(), 400);
+    const timer = setTimeout(() => loadDiscountsRef.current(0, false), 400);
     return () => clearTimeout(timer);
   }, [query]);
 
@@ -125,10 +160,11 @@ export default function HomePage() {
             </p>
           </div>
           <div className="rounded-2xl border border-accent/30 bg-white/10 px-4 py-3 text-sm text-muted shadow-[0_0_20px_rgba(34,211,238,0.25)]">
-            <span className="font-semibold text-ink">{discounts.length}</span> deals
+            <span className="font-semibold text-ink">{discounts.length}</span> of{" "}
+            <span className="font-semibold text-ink">{totalCount}</span> deals
             {hasActiveFilters({ city, category, cardType, cardTier, bank, query })
               ? " found"
-              : " — search to find specific merchants"}
+              : " — scroll for more"}
           </div>
         </div>
 
@@ -168,6 +204,12 @@ export default function HomePage() {
           {discounts.map((deal) => (
             <DealCard key={deal.discount_id} {...deal} />
           ))}
+          <div ref={sentinelRef} className="col-span-full h-4" aria-hidden />
+          {loadingMore && (
+            <div className="col-span-full flex justify-center py-4">
+              <span className="text-sm text-muted">Loading more…</span>
+            </div>
+          )}
           {loading && (
             <>
               {[1, 2, 3].map((i) => (

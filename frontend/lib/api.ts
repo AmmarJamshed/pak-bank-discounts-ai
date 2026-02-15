@@ -16,8 +16,8 @@ export type Discount = {
 };
 
 export type FetchResult<T> =
-  | { results: T[]; error?: never }
-  | { results: T[]; error: string };
+  | { results: T[]; total_count?: number; error?: never }
+  | { results: T[]; total_count?: number; error: string };
 
 async function fetchWithTimeout(url: string, timeoutMs = 90000) {
   const controller = new AbortController();
@@ -39,7 +39,10 @@ async function safeFetchJson<T = unknown>(
 ): Promise<FetchResult<T>> {
   try {
     const data = await fetchWithTimeout(url);
-    return { results: (data.results ?? []) as T[] };
+    return {
+      results: (data.results ?? []) as T[],
+      total_count: data.total_count ?? (data.results ?? []).length,
+    };
   } catch (error) {
     const msg =
       error instanceof Error
@@ -52,16 +55,17 @@ async function safeFetchJson<T = unknown>(
   }
 }
 
-const DEFAULT_LIMIT = "1500"; // Balance of speed and coverage
+const PAGE_SIZE = 48; // Load 48 per batch (fits grid nicely)
 
-export async function fetchDiscounts(params: Record<string, string>) {
+export async function fetchDiscounts(params: Record<string, string | number>) {
   const url = new URL(`${API_BASE}/discounts`);
-  if (!params.limit) {
-    url.searchParams.set("limit", DEFAULT_LIMIT);
-  }
+  const limit = params.limit ?? PAGE_SIZE;
+  const offset = params.offset ?? 0;
+  url.searchParams.set("limit", String(limit));
+  url.searchParams.set("offset", String(offset));
   Object.entries(params).forEach(([key, value]) => {
-    if (value) {
-      url.searchParams.set(key, value);
+    if (key !== "limit" && key !== "offset" && value !== undefined && value !== "") {
+      url.searchParams.set(key, String(value));
     }
   });
   return safeFetchJson<Discount>(url.toString());

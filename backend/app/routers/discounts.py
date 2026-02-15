@@ -37,10 +37,11 @@ async def list_discounts(
     card_type: str | None = None,
     card_tier: str | None = None,
     intent: str | None = None,
-    limit: int = Query(5000, ge=1, le=5000),
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
     session: AsyncSession = Depends(get_session),
 ):
-    query = (
+    base = (
         select(
             Discount.id,
             Discount.discount_percent,
@@ -62,24 +63,30 @@ async def list_discounts(
     )
 
     if city:
-        query = query.where(func.lower(Merchant.city) == city.lower())
+        base = base.where(func.lower(Merchant.city) == city.lower())
     if category:
-        query = query.where(func.lower(Merchant.category) == category.lower())
+        base = base.where(func.lower(Merchant.category) == category.lower())
     if bank:
-        query = query.where(func.lower(Bank.name) == bank.lower())
+        base = base.where(func.lower(Bank.name) == bank.lower())
     if card_type:
-        query = query.where(func.lower(Card.type) == card_type.lower())
+        base = base.where(func.lower(Card.type) == card_type.lower())
     if card_tier:
-        query = query.where(func.lower(Card.tier) == card_tier.lower())
+        base = base.where(func.lower(Card.tier) == card_tier.lower())
 
-    # Keyword search: filter to deals matching the search term (exact substring in merchant, category, etc.)
     if intent and intent.strip():
         words = [w.strip() for w in intent.split() if w.strip()]
         if words:
             for word in words:
-                query = query.where(_keyword_filter(word))
+                base = base.where(_keyword_filter(word))
 
-    result = await session.execute(query.limit(limit))
+    # Total count (before pagination)
+    subq = base.subquery()
+    count_q = select(func.count()).select_from(subq)
+    total_result = await session.execute(count_q)
+    total_count = total_result.scalar() or 0
+
+    # Paginated results
+    result = await session.execute(base.offset(offset).limit(limit))
     discounts = [
         {
             "discount_id": row.id,
@@ -99,7 +106,6 @@ async def list_discounts(
         for row in result.all()
     ]
 
-    # No filter - show all deals from DB
     if intent:
         discounts = rank_discounts(discounts, city or "", intent)
-    return {"count": len(discounts), "results": discounts}
+    return {"count": len(discounts), "total_count": total_count, "results": discounts}

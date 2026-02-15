@@ -6,6 +6,7 @@ const CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days - use cached as fall
 export type CachedDeals = {
   discounts: unknown[];
   banks: string[];
+  totalCount?: number;
   fetchedAt: number;
 };
 
@@ -22,12 +23,17 @@ export function getCachedDeals(): CachedDeals | null {
   }
 }
 
-export function setCachedDeals(discounts: unknown[], banks: string[]): void {
+export function setCachedDeals(
+  discounts: unknown[],
+  banks: string[],
+  totalCount?: number
+): void {
   if (typeof window === "undefined") return;
   try {
     const data: CachedDeals = {
       discounts,
       banks: Array.isArray(banks) ? banks : [],
+      totalCount,
       fetchedAt: Date.now(),
     };
     localStorage.setItem(CACHE_KEY, JSON.stringify(data));
